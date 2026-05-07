@@ -1,16 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Search — TweetBox{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1>Search Posts</h1>
+<div class="feed-header">
+  <h1 class="feed-title">Search</h1>
 </div>
+
 <form method="get" action="/search" class="search-form">
-  <input type="search" name="q" value="{{ q }}" placeholder="Search messages…" autofocus>
+  <input type="search" name="q" value="{{ q }}" placeholder="Search all posts…" autofocus>
   <button type="submit" class="btn-primary">Search</button>
 </form>
 
 {% if q %}
-  <p class="search-count">{{ total }} result{{ 's' if total != 1 else '' }} for <strong>{{ q }}</strong></p>
+  <p class="search-count">
+    {% if total == 0 %}No results for <strong>{{ q }}</strong>
+    {% else %}<strong>{{ total }}</strong> result{{ 's' if total != 1 else '' }} for <strong>{{ q }}</strong>{% endif %}
+  </p>
+
   {% for m in results %}
   <article class="tweet">
     <div class="tweet-avatar">
@@ -21,22 +26,26 @@
     <div class="tweet-body">
       <div class="tweet-meta">
         <a class="tweet-user" href="/profile/{{ m.username }}">@{{ m.username }}</a>
+        <span class="tweet-dot">·</span>
         <span class="tweet-time">{{ m.created_at[:16].replace('T',' ') }}</span>
       </div>
       <div class="tweet-content">{{ m.body | render_body | safe }}</div>
       <div class="tweet-actions">
-        <a href="/message/{{ m.id }}">💬 View thread</a>
+        <a href="/message/{{ m.id }}" class="action-reply">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          View thread
+        </a>
       </div>
     </div>
   </article>
   {% else %}
-  <p class="empty">No results found.</p>
+  <p class="empty">No posts matched your search.</p>
   {% endfor %}
 
   {% if total_pages > 1 %}
   <div class="pagination">
     {% if page > 1 %}<a href="/search?q={{ q }}&page={{ page - 1 }}" class="btn-page">← Prev</a>{% endif %}
-    <span>Page {{ page }} of {{ total_pages }}</span>
+    <span class="page-info">{{ page }} / {{ total_pages }}</span>
     {% if page < total_pages %}<a href="/search?q={{ q }}&page={{ page + 1 }}" class="btn-page">Next →</a>{% endif %}
   </div>
   {% endif %}

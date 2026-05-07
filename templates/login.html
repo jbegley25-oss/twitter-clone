@@ -1,16 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Log In — TweetBox{% endblock %}
+{% block title %}Log in to TweetBox{% endblock %}
+{% block main_class %}auth-layout{% endblock %}
+
 {% block content %}
-<div class="auth-card">
-  <h1>Log In</h1>
-  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
-  <form method="post" action="/login">
-    <label for="username">Username</label>
-    <input type="text" id="username" name="username" autocomplete="username" required autofocus>
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" autocomplete="current-password" required>
-    <button type="submit" class="btn-primary">Log In</button>
-  </form>
-  <p class="auth-switch">Don't have an account? <a href="/create_user">Sign up</a></p>
+<div class="auth-left">
+  <a href="/" class="auth-brand">
+    <span class="brand-icon-lg">✦</span>
+    <span>TweetBox</span>
+  </a>
+  <h1 class="auth-headline">Welcome<br>back.</h1>
+  <p class="auth-sub">Sign in to pick up where you left off.</p>
+  <div class="auth-testimonial">
+    <p>"The cleanest Twitter clone I've ever seen."</p>
+    <span>— your professor, probably</span>
+  </div>
+</div>
+
+<div class="auth-right">
+  <div class="auth-card">
+    <h2>Log in</h2>
+    <p class="auth-card-sub">New here? <a href="/create_user">Create an account →</a></p>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login" class="auth-form">
+      <div class="field-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username"
+               autocomplete="username" required autofocus
+               placeholder="your_username">
+      </div>
+      <div class="field-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               autocomplete="current-password" required
+               placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-auth">Log in</button>
+    </form>
+
+    <div class="auth-divider"><span>or</span></div>
+    <a href="/create_user" class="btn-auth-outline">Create a new account</a>
+  </div>
 </div>
 {% endblock %}

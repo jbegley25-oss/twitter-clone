@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}New Post — TweetBox{% endblock %}
+{% block title %}{% if parent %}Reply{% else %}New Post{% endif %} — TweetBox{% endblock %}
 {% block content %}
 <div class="form-card">
   {% if parent %}
@@ -10,13 +10,17 @@
   {% endif %}
 
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
   <form method="post" action="/create_message">
     {% if parent %}<input type="hidden" name="parent_id" value="{{ parent.id }}">{% endif %}
-    <label for="body">What's on your mind? (Markdown supported)</label>
-    <textarea id="body" name="body" rows="5" placeholder="Type here…" required autofocus></textarea>
-    <button type="submit" class="btn-primary">
-      {% if parent %}Post Reply{% else %}Post{% endif %}
-    </button>
+    <div class="field-group">
+      <label for="body">What's on your mind? <span style="color:var(--text3);font-weight:400">(Markdown supported)</span></label>
+      <textarea id="body" name="body" rows="5" placeholder="Share something…" required autofocus></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">{% if parent %}Post Reply{% else %}Post{% endif %}</button>
+      <a href="{% if parent %}/message/{{ parent.id }}{% else %}/{% endif %}" class="btn-secondary">Cancel</a>
+    </div>
   </form>
 </div>
 {% endblock %}

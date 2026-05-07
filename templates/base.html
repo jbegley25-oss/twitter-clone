@@ -5,26 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}TweetBox{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <nav class="navbar">
-    <a class="brand" href="/">🐦 TweetBox</a>
+    <a class="brand" href="/">
+      <span class="brand-icon">✦</span>
+      <span class="brand-name">TweetBox</span>
+    </a>
     <div class="nav-links">
-      <a href="/">Home</a>
       {% if user %}
-        <a href="/create_message">New Post</a>
-        <a href="/profile/{{ user.username }}">@{{ user.username }}</a>
-        <a href="/search">Search</a>
-        <a href="/change_password">Password</a>
-        <a href="/logout" class="btn-logout">Logout</a>
+        <a href="/" class="nav-link">Home</a>
+        <a href="/search" class="nav-link">Search</a>
+        <a href="/create_message" class="btn-compose">+ Post</a>
+        <a href="/profile/{{ user.username }}" class="nav-avatar">
+          <img src="https://robohash.org/{{ user.username }}?size=32x32" alt="{{ user.username }}" width="32" height="32">
+          <span>@{{ user.username }}</span>
+        </a>
+        <a href="/logout" class="nav-link nav-logout">Log out</a>
       {% else %}
-        <a href="/login" class="btn-login">Log In</a>
-        <a href="/create_user" class="btn-signup">Sign Up</a>
+        <a href="/login" class="btn-nav-outline">Log in</a>
+        <a href="/create_user" class="btn-nav-solid">Sign up</a>
       {% endif %}
     </div>
   </nav>
 
-  <main class="container">
+  <main class="{% block main_class %}container{% endblock %}">
     {% block content %}{% endblock %}
   </main>
 

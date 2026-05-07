@@ -5,8 +5,10 @@
   <h1>Edit Post</h1>
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
   <form method="post" action="/edit_message/{{ message.id }}">
-    <label for="body">Edit your post</label>
-    <textarea id="body" name="body" rows="5" required autofocus>{{ message.body }}</textarea>
+    <div class="field-group">
+      <label for="body">Edit your post</label>
+      <textarea id="body" name="body" rows="5" required autofocus>{{ message.body }}</textarea>
+    </div>
     <div class="form-actions">
       <button type="submit" class="btn-primary">Save Changes</button>
       <a href="/" class="btn-secondary">Cancel</a>

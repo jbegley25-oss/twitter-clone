@@ -1,20 +1,56 @@
 {% extends "base.html" %}
-{% block title %}Sign Up — TweetBox{% endblock %}
+{% block title %}Join TweetBox{% endblock %}
+{% block main_class %}auth-layout{% endblock %}
+
 {% block content %}
-<div class="auth-card">
-  <h1>Create Account</h1>
-  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
-  <form method="post" action="/create_user">
-    <label for="username">Username</label>
-    <input type="text" id="username" name="username" autocomplete="username"
-           pattern="[A-Za-z0-9_]+" title="Letters, numbers, and underscores only"
-           maxlength="50" required autofocus>
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" autocomplete="new-password" required>
-    <label for="password2">Confirm Password</label>
-    <input type="password" id="password2" name="password2" autocomplete="new-password" required>
-    <button type="submit" class="btn-primary">Create Account</button>
-  </form>
-  <p class="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+<div class="auth-left">
+  <a href="/" class="auth-brand">
+    <span class="brand-icon-lg">✦</span>
+    <span>TweetBox</span>
+  </a>
+  <h1 class="auth-headline">Join the<br>conversation.</h1>
+  <p class="auth-sub">A place where ideas spread and communities grow.</p>
+  <ul class="auth-perks">
+    <li>✦ Post and reply to anyone</li>
+    <li>✦ @mention your people</li>
+    <li>✦ Markdown-powered posts</li>
+    <li>✦ Always free</li>
+  </ul>
+</div>
+
+<div class="auth-right">
+  <div class="auth-card">
+    <h2>Create account</h2>
+    <p class="auth-card-sub">Already have one? <a href="/login">Log in →</a></p>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/create_user" class="auth-form">
+      <div class="field-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username"
+               autocomplete="username"
+               pattern="[A-Za-z0-9_]+" title="Letters, numbers, and underscores only"
+               maxlength="50" required autofocus
+               placeholder="your_username">
+        <span class="field-hint">Letters, numbers, underscores only</span>
+      </div>
+      <div class="field-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               autocomplete="new-password" required
+               placeholder="••••••••">
+      </div>
+      <div class="field-group">
+        <label for="password2">Confirm password</label>
+        <input type="password" id="password2" name="password2"
+               autocomplete="new-password" required
+               placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-auth">Create account</button>
+    </form>
+  </div>
 </div>
 {% endblock %}
