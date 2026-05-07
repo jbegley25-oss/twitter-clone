@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Post by @{{ parent.username }} — TweetBox{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Thread</h1>
+  <a href="/" class="btn-secondary">← Back</a>
+</div>
+
+<article class="tweet tweet-featured">
+  <div class="tweet-avatar">
+    <a href="/profile/{{ parent.username }}">
+      <img src="https://robohash.org/{{ parent.avatar_seed }}?size=64x64" alt="{{ parent.username }}" width="64" height="64">
+    </a>
+  </div>
+  <div class="tweet-body">
+    <div class="tweet-meta">
+      <a class="tweet-user" href="/profile/{{ parent.username }}">@{{ parent.username }}</a>
+      <span class="tweet-time">{{ parent.created_at[:16].replace('T',' ') }}</span>
+      {% if parent.edited_at %}<span class="edited-badge">(edited {{ parent.edited_at[:16].replace('T',' ') }})</span>{% endif %}
+    </div>
+    <div class="tweet-content">{{ parent.body | render_body | safe }}</div>
+    <div class="tweet-actions">
+      {% if user %}
+        <a href="/create_message?reply_to={{ parent.id }}" class="btn-reply">💬 Reply</a>
+      {% endif %}
+      {% if user and user.id == parent.user_id %}
+        <a href="/edit_message/{{ parent.id }}">✏️ Edit</a>
+        <a href="/delete_message/{{ parent.id }}" onclick="return confirm('Delete this post?')">🗑 Delete</a>
+      {% endif %}
+    </div>
+  </div>
+</article>
+
+<div class="replies-section">
+  <h2>{{ replies | length }} Repl{{ 'y' if replies | length == 1 else 'ies' }}</h2>
+  {% for r in replies %}
+  <article class="tweet tweet-reply">
+    <div class="tweet-avatar">
+      <a href="/profile/{{ r.username }}">
+        <img src="https://robohash.org/{{ r.avatar_seed }}?size=40x40" alt="{{ r.username }}" width="40" height="40">
+      </a>
+    </div>
+    <div class="tweet-body">
+      <div class="tweet-meta">
+        <a class="tweet-user" href="/profile/{{ r.username }}">@{{ r.username }}</a>
+        <span class="tweet-time">{{ r.created_at[:16].replace('T',' ') }}</span>
+      </div>
+      <div class="tweet-content">{{ r.body | render_body | safe }}</div>
+      <div class="tweet-actions">
+        {% if user and user.id == r.user_id %}
+          <a href="/edit_message/{{ r.id }}">✏️ Edit</a>
+          <a href="/delete_message/{{ r.id }}" onclick="return confirm('Delete this reply?')">🗑 Delete</a>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+  {% else %}
+  <p class="empty">No replies yet. Be the first!</p>
+  {% endfor %}
+</div>
+
+{% if user %}
+<div class="reply-form">
+  <h3>Add a reply</h3>
+  <form method="post" action="/create_message">
+    <input type="hidden" name="parent_id" value="{{ parent.id }}">
+    <textarea name="body" rows="3" placeholder="Write a reply…" required></textarea>
+    <button type="submit" class="btn-primary">Post Reply</button>
+  </form>
+</div>
+{% else %}
+<p class="empty"><a href="/login">Log in</a> to reply.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,237 @@
+/* TweetBox — dark themed Twitter clone */
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #222636;
+  --border: #2e3347;
+  --accent: #1d9bf0;
+  --accent-hover: #1a8cd8;
+  --danger: #e0245e;
+  --text: #e7e9ea;
+  --muted: #71767b;
+  --success: #00ba7c;
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- Navbar ---- */
+.navbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 56px;
+  background: rgba(15,17,23,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+.brand:hover { text-decoration: none; }
+.nav-links { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nav-links a {
+  padding: 6px 12px; border-radius: 20px;
+  color: var(--text); font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.nav-links a:hover { background: var(--surface2); text-decoration: none; }
+.btn-login, .btn-signup {
+  background: var(--accent) !important; color: #fff !important; font-weight: 600;
+}
+.btn-login:hover, .btn-signup:hover { background: var(--accent-hover) !important; }
+.btn-logout { color: var(--danger) !important; }
+
+/* ---- Layout ---- */
+.container { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+
+/* ---- Page header ---- */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.page-header h1 { font-size: 1.4rem; font-weight: 700; }
+
+/* ---- Tweets ---- */
+.tweet {
+  display: flex; gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  transition: background 0.15s;
+}
+.tweet:hover { background: var(--surface2); }
+.tweet-featured { border-color: var(--accent); }
+.tweet-reply { margin-left: 24px; }
+.tweet-avatar img { border-radius: 50%; display: block; }
+.tweet-body { flex: 1; min-width: 0; }
+.tweet-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px; flex-wrap: wrap;
+}
+.tweet-user { font-weight: 700; color: var(--text); }
+.tweet-user:hover { color: var(--accent); text-decoration: none; }
+.tweet-time { color: var(--muted); font-size: 0.85rem; }
+.edited-badge {
+  color: var(--muted); font-size: 0.8rem;
+  background: var(--surface2); padding: 2px 6px; border-radius: 4px;
+}
+.tweet-content { word-break: break-word; line-height: 1.6; }
+.tweet-content p { margin: 0 0 8px; }
+.tweet-content p:last-child { margin-bottom: 0; }
+.tweet-content a { color: var(--accent); }
+.tweet-content pre {
+  background: var(--bg); padding: 12px; border-radius: 8px;
+  overflow-x: auto; margin: 8px 0;
+}
+.tweet-content code { font-family: monospace; font-size: 0.9em; }
+.tweet-actions {
+  display: flex; gap: 16px; margin-top: 10px;
+  font-size: 0.85rem; color: var(--muted);
+}
+.tweet-actions a { color: var(--muted); transition: color 0.15s; }
+.tweet-actions a:hover { color: var(--accent); text-decoration: none; }
+
+/* ---- Auth / Form cards ---- */
+.auth-card, .form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.auth-card h1, .form-card h1 { margin-bottom: 20px; font-size: 1.4rem; }
+.auth-switch { margin-top: 16px; color: var(--muted); font-size: 0.9rem; }
+
+label {
+  display: block; margin-bottom: 4px;
+  font-size: 0.9rem; font-weight: 600; color: var(--muted);
+}
+input[type=text], input[type=password], input[type=search],
+textarea, select {
+  width: 100%; padding: 10px 14px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 1rem;
+  font-family: var(--font);
+  margin-bottom: 16px;
+  transition: border-color 0.15s;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+textarea { resize: vertical; min-height: 100px; }
+
+/* ---- Buttons ---- */
+.btn-primary {
+  display: inline-block;
+  background: var(--accent); color: #fff;
+  border: none; padding: 10px 20px;
+  border-radius: 20px; font-size: 0.95rem; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
+  text-decoration: none;
+}
+.btn-primary:hover { background: var(--accent-hover); text-decoration: none; color: #fff; }
+.btn-secondary {
+  display: inline-block; padding: 10px 20px;
+  border: 1px solid var(--border); border-radius: 20px;
+  color: var(--text); font-size: 0.95rem; font-weight: 600;
+  text-decoration: none; transition: background 0.15s;
+}
+.btn-secondary:hover { background: var(--surface2); text-decoration: none; }
+.btn-danger {
+  background: var(--danger); color: #fff;
+  border: none; padding: 10px 20px; border-radius: 20px;
+  font-size: 0.95rem; font-weight: 700; cursor: pointer;
+}
+.btn-reply {
+  background: transparent; border: 1px solid var(--accent);
+  color: var(--accent); padding: 6px 16px; border-radius: 20px;
+  font-weight: 600; font-size: 0.85rem;
+}
+.btn-page {
+  background: var(--surface2); color: var(--text);
+  padding: 8px 18px; border-radius: 20px; font-weight: 600;
+}
+.btn-page:hover { background: var(--border); text-decoration: none; }
+
+.form-actions { display: flex; gap: 12px; align-items: center; }
+
+/* ---- Alerts ---- */
+.alert {
+  padding: 12px 16px; border-radius: 8px;
+  margin-bottom: 16px; font-size: 0.9rem;
+}
+.alert-error { background: rgba(224,36,94,0.15); border: 1px solid var(--danger); color: #ff6b9d; }
+.alert-success { background: rgba(0,186,124,0.15); border: 1px solid var(--success); color: var(--success); }
+
+/* ---- Pagination ---- */
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  margin-top: 24px; padding: 16px 0;
+  color: var(--muted);
+}
+
+/* ---- Profile ---- */
+.profile-header {
+  display: flex; gap: 20px; align-items: flex-start;
+  padding: 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 24px;
+}
+.profile-avatar { border-radius: 50%; }
+.profile-header h1 { font-size: 1.4rem; margin-bottom: 6px; }
+.profile-bio { color: var(--muted); margin-bottom: 8px; }
+.profile-stats { color: var(--muted); font-size: 0.9rem; }
+
+.edit-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+}
+.edit-section summary {
+  cursor: pointer; font-weight: 600; color: var(--muted);
+  padding: 4px 0; user-select: none;
+}
+.edit-section > *:not(summary) { margin-top: 12px; }
+.danger-zone { border-color: var(--danger); }
+.danger-zone summary { color: var(--danger); }
+
+/* ---- Search ---- */
+.search-form {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.search-form input { margin-bottom: 0; flex: 1; }
+.search-count { color: var(--muted); margin-bottom: 16px; font-size: 0.9rem; }
+
+/* ---- Replies ---- */
+.replies-section { margin: 24px 0; }
+.replies-section h2 { margin-bottom: 16px; font-size: 1.1rem; color: var(--muted); }
+.reply-form {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-top: 24px;
+}
+.reply-form h3 { margin-bottom: 12px; }
+.reply-quote {
+  background: var(--bg); border-left: 3px solid var(--accent);
+  padding: 10px 16px; border-radius: 4px; margin-bottom: 16px;
+  color: var(--muted); font-style: italic;
+}
+
+/* ---- Misc ---- */
+.empty { color: var(--muted); text-align: center; padding: 40px 0; }
+
+footer {
+  text-align: center; padding: 32px 16px;
+  color: var(--muted); font-size: 0.85rem;
+  border-top: 1px solid var(--border); margin-top: 40px;
+}

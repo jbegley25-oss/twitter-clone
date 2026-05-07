@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}@{{ profile_user.username }} — TweetBox{% endblock %}
+{% block content %}
+<div class="profile-header">
+  <img src="https://robohash.org/{{ profile_user.avatar_seed }}?size=96x96"
+       alt="{{ profile_user.username }}" class="profile-avatar">
+  <div>
+    <h1>@{{ profile_user.username }}</h1>
+    <p class="profile-bio">{{ profile_user.bio or 'No bio yet.' }}</p>
+    <p class="profile-stats">{{ msg_count }} post{{ 's' if msg_count != 1 else '' }} &bull; Joined {{ profile_user.created_at[:10] }}</p>
+  </div>
+</div>
+
+{% if user and user.username == profile_user.username %}
+<details class="edit-section">
+  <summary>Edit Bio</summary>
+  <form method="post" action="/profile/{{ profile_user.username }}/edit">
+    <textarea name="bio" rows="3" placeholder="Tell the world about yourself…">{{ profile_user.bio }}</textarea>
+    <button type="submit" class="btn-primary">Save Bio</button>
+  </form>
+</details>
+
+<details class="edit-section danger-zone">
+  <summary>⚠️ Delete Account</summary>
+  {% if delete_error %}<div class="alert alert-error">{{ delete_error }}</div>{% endif %}
+  <form method="post" action="/delete_account" onsubmit="return confirm('Permanently delete your account and all posts?')">
+    <label for="del_pw">Confirm your password to delete account</label>
+    <input type="password" id="del_pw" name="password" required>
+    <button type="submit" class="btn-danger">Delete My Account</button>
+  </form>
+</details>
+{% endif %}
+
+<h2>Recent Posts</h2>
+{% for m in messages %}
+<article class="tweet">
+  <div class="tweet-avatar">
+    <img src="https://robohash.org/{{ m.avatar_seed }}?size=48x48" alt="{{ m.username }}" width="48" height="48">
+  </div>
+  <div class="tweet-body">
+    <div class="tweet-meta">
+      <span class="tweet-time">{{ m.created_at[:16].replace('T',' ') }}</span>
+      {% if m.edited_at %}<span class="edited-badge">(edited)</span>{% endif %}
+    </div>
+    <div class="tweet-content">{{ m.body | render_body | safe }}</div>
+    <div class="tweet-actions">
+      <a href="/message/{{ m.id }}">💬 Reply</a>
+      {% if user and user.id == m.user_id %}
+        <a href="/edit_message/{{ m.id }}">✏️ Edit</a>
+        <a href="/delete_message/{{ m.id }}" onclick="return confirm('Delete this post?')">🗑 Delete</a>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% else %}
+<p class="empty">No posts yet.</p>
+{% endfor %}
+{% endblock %}

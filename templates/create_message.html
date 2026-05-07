@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}New Post — TweetBox{% endblock %}
+{% block content %}
+<div class="form-card">
+  {% if parent %}
+  <h1>Reply to @{{ parent.username }}</h1>
+  <blockquote class="reply-quote">{{ parent.body | render_body | safe }}</blockquote>
+  {% else %}
+  <h1>New Post</h1>
+  {% endif %}
+
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/create_message">
+    {% if parent %}<input type="hidden" name="parent_id" value="{{ parent.id }}">{% endif %}
+    <label for="body">What's on your mind? (Markdown supported)</label>
+    <textarea id="body" name="body" rows="5" placeholder="Type here…" required autofocus></textarea>
+    <button type="submit" class="btn-primary">
+      {% if parent %}Post Reply{% else %}Post{% endif %}
+    </button>
+  </form>
+</div>
+{% endblock %}

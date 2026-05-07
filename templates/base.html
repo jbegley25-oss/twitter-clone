@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TweetBox{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="/">🐦 TweetBox</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      {% if user %}
+        <a href="/create_message">New Post</a>
+        <a href="/profile/{{ user.username }}">@{{ user.username }}</a>
+        <a href="/search">Search</a>
+        <a href="/change_password">Password</a>
+        <a href="/logout" class="btn-logout">Logout</a>
+      {% else %}
+        <a href="/login" class="btn-login">Log In</a>
+        <a href="/create_user" class="btn-signup">Sign Up</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <p>TweetBox &copy; 2026 &mdash; <a href="/messages.json">JSON API</a></p>
+  </footer>
+</body>
+</html>

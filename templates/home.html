@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Home — TweetBox{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Latest Posts</h1>
+  {% if user %}<a href="/create_message" class="btn-primary">+ New Post</a>{% endif %}
+</div>
+
+{% for m in messages %}
+<article class="tweet">
+  <div class="tweet-avatar">
+    <a href="/profile/{{ m.username }}">
+      <img src="https://robohash.org/{{ m.avatar_seed }}?size=48x48" alt="{{ m.username }}" width="48" height="48">
+    </a>
+  </div>
+  <div class="tweet-body">
+    <div class="tweet-meta">
+      <a class="tweet-user" href="/profile/{{ m.username }}">@{{ m.username }}</a>
+      <span class="tweet-time">{{ m.created_at[:16].replace('T',' ') }}</span>
+      {% if m.edited_at %}<span class="edited-badge">(edited {{ m.edited_at[:16].replace('T',' ') }})</span>{% endif %}
+    </div>
+    <div class="tweet-content">{{ m.body | render_body | safe }}</div>
+    <div class="tweet-actions">
+      <a href="/message/{{ m.id }}">💬 {{ m.reply_count }} repl{{ 'y' if m.reply_count == 1 else 'ies' }}</a>
+      {% if user and user.id == m.user_id %}
+        <a href="/edit_message/{{ m.id }}">✏️ Edit</a>
+        <a href="/delete_message/{{ m.id }}" onclick="return confirm('Delete this post?')">🗑 Delete</a>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% else %}
+<p class="empty">No posts yet. Be the first!</p>
+{% endfor %}
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}<a href="/?page={{ page - 1 }}" class="btn-page">← Prev</a>{% endif %}
+  <span>Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}<a href="/?page={{ page + 1 }}" class="btn-page">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Search — TweetBox{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Search Posts</h1>
+</div>
+<form method="get" action="/search" class="search-form">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search messages…" autofocus>
+  <button type="submit" class="btn-primary">Search</button>
+</form>
+
+{% if q %}
+  <p class="search-count">{{ total }} result{{ 's' if total != 1 else '' }} for <strong>{{ q }}</strong></p>
+  {% for m in results %}
+  <article class="tweet">
+    <div class="tweet-avatar">
+      <a href="/profile/{{ m.username }}">
+        <img src="https://robohash.org/{{ m.avatar_seed }}?size=48x48" alt="{{ m.username }}" width="48" height="48">
+      </a>
+    </div>
+    <div class="tweet-body">
+      <div class="tweet-meta">
+        <a class="tweet-user" href="/profile/{{ m.username }}">@{{ m.username }}</a>
+        <span class="tweet-time">{{ m.created_at[:16].replace('T',' ') }}</span>
+      </div>
+      <div class="tweet-content">{{ m.body | render_body | safe }}</div>
+      <div class="tweet-actions">
+        <a href="/message/{{ m.id }}">💬 View thread</a>
+      </div>
+    </div>
+  </article>
+  {% else %}
+  <p class="empty">No results found.</p>
+  {% endfor %}
+
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}<a href="/search?q={{ q }}&page={{ page - 1 }}" class="btn-page">← Prev</a>{% endif %}
+    <span>Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="/search?q={{ q }}&page={{ page + 1 }}" class="btn-page">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}
