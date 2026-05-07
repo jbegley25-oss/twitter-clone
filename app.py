@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Optional
 
 import markdown as md
-from fastapi import Cookie, FastAPI, Form, HTTPException, Request, Response
+from fastapi import FastAPI, Form, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,11 +17,36 @@ from starlette.middleware.sessions import SessionMiddleware
 DB = 'twitter.db'
 SECRET = 'tweetbox-super-secret-key-change-in-prod'
 PAGE_SIZE = 50
+MAX_BODY_LEN = 2000
+MAX_BIO_LEN = 500
+MAX_PASSWORD_LEN = 200
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=SECRET)
 app.mount('/static', StaticFiles(directory='static'), name='static')
 templates = Jinja2Templates(directory='templates')
+
+
+# ---------------------------------------------------------------------------
+# Global error handlers — never show raw JSON or stack traces to users
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """Turn FastAPI 422 validation errors into friendly HTML redirects."""
+    return RedirectResponse('/', status_code=302)
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    user = current_user(request)
+    return templates.TemplateResponse('404.html', {'request': request, 'user': user}, status_code=404)
+
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, exc):
+    user = current_user(request)
+    return templates.TemplateResponse('500.html', {'request': request, 'user': user}, status_code=500)
 
 
 # ---------------------------------------------------------------------------
@@ -42,12 +68,20 @@ def hash_password(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
 
 
+def _safe_page(page) -> int:
+    """Clamp page to a valid positive integer."""
+    try:
+        p = int(page)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, p)
+
+
 # ---------------------------------------------------------------------------
 # Template helpers / filters
 # ---------------------------------------------------------------------------
 
 def _urlify(text: str) -> str:
-    """Convert plain URLs to <a> tags."""
     return re.sub(
         r'(https?://[^\s<>"]+)',
         r'<a href="\1" target="_blank" rel="noopener noreferrer">\1</a>',
@@ -56,7 +90,6 @@ def _urlify(text: str) -> str:
 
 
 def _mentionify(text: str) -> str:
-    """Convert @username to profile links."""
     return re.sub(
         r'@([A-Za-z0-9_]+)',
         r'<a href="/profile/\1">@\1</a>',
@@ -69,15 +102,16 @@ _DANGEROUS_TAGS = re.compile(
     r'[\s>].*?</\1>|<(script|style|iframe|object|embed|form|input|button|link|meta|base)[^>]*/?>',
     re.IGNORECASE | re.DOTALL,
 )
-_EVENT_ATTRS = re.compile(r'\s+on\w+\s*=\s*["\'][^"\']*["\']', re.IGNORECASE)
-_JAVASCRIPT_HREF = re.compile(r'href\s*=\s*["\']javascript:[^"\']*["\']', re.IGNORECASE)
+_EVENT_ATTRS = re.compile(r'\s+on\w+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]*)', re.IGNORECASE)
+_JAVASCRIPT_HREF = re.compile(r'href\s*=\s*["\']?\s*javascript:', re.IGNORECASE)
+_DATA_URI = re.compile(r'src\s*=\s*["\']data:', re.IGNORECASE)
 
 
 def _sanitize(html: str) -> str:
-    """Strip script/style/dangerous tags and event handlers."""
     html = _DANGEROUS_TAGS.sub('', html)
     html = _EVENT_ATTRS.sub('', html)
     html = _JAVASCRIPT_HREF.sub('href="#"', html)
+    html = _DATA_URI.sub('src=""', html)
     return html
 
 
@@ -100,19 +134,18 @@ templates.env.filters['render_body'] = render_body
 # ---------------------------------------------------------------------------
 
 def current_user(request: Request) -> Optional[dict]:
-    username = request.session.get('username')
+    try:
+        username = request.session.get('username')
+    except Exception:
+        return None
     if not username:
         return None
-    with get_db() as con:
-        row = con.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
-        return dict(row) if row else None
-
-
-def require_login(request: Request):
-    user = current_user(request)
-    if not user:
-        raise HTTPException(status_code=303, headers={'Location': '/login'})
-    return user
+    try:
+        with get_db() as con:
+            row = con.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
+            return dict(row) if row else None
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +154,7 @@ def require_login(request: Request):
 
 @app.get('/', response_class=HTMLResponse)
 def home(request: Request, page: int = 1):
+    page = _safe_page(page)
     user = current_user(request)
     offset = (page - 1) * PAGE_SIZE
     with get_db() as con:
@@ -138,6 +172,7 @@ def home(request: Request, page: int = 1):
             LIMIT ? OFFSET ?
         ''', (PAGE_SIZE, offset)).fetchall()
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, total_pages)
     return templates.TemplateResponse('home.html', {
         'request': request, 'user': user, 'messages': rows,
         'page': page, 'total_pages': total_pages,
@@ -146,6 +181,7 @@ def home(request: Request, page: int = 1):
 
 @app.get('/messages.json')
 def messages_json(page: int = 1):
+    page = _safe_page(page)
     offset = (page - 1) * PAGE_SIZE
     with get_db() as con:
         rows = con.execute('''
@@ -171,18 +207,24 @@ def login_get(request: Request):
 
 
 @app.post('/login', response_class=HTMLResponse)
-def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+def login_post(request: Request, username: str = Form(default=''), password: str = Form(default='')):
+    username = username.strip()[:MAX_PASSWORD_LEN]
+    if not username or not password:
+        return templates.TemplateResponse('login.html', {
+            'request': request, 'user': None,
+            'error': 'Invalid username or password.',
+        }, status_code=401)
     with get_db() as con:
         row = con.execute(
             'SELECT * FROM users WHERE username=? AND password_hash=?',
-            (username, hash_password(password)),
+            (username, hash_password(password[:MAX_PASSWORD_LEN])),
         ).fetchone()
     if not row:
         return templates.TemplateResponse('login.html', {
             'request': request, 'user': None,
             'error': 'Invalid username or password.',
         }, status_code=401)
-    request.session['username'] = username
+    request.session['username'] = row['username']
     return RedirectResponse('/', status_code=302)
 
 
@@ -206,12 +248,13 @@ def create_user_get(request: Request):
 @app.post('/create_user', response_class=HTMLResponse)
 def create_user_post(
     request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    password2: str = Form(...),
+    username: str = Form(default=''),
+    password: str = Form(default=''),
+    password2: str = Form(default=''),
 ):
+    username = username.strip()
     error = None
-    if not username.strip():
+    if not username:
         error = 'Username cannot be empty.'
     elif len(username) > 50:
         error = 'Username too long (max 50 characters).'
@@ -219,6 +262,8 @@ def create_user_post(
         error = 'Username may only contain letters, numbers, and underscores.'
     elif not password:
         error = 'Password cannot be empty.'
+    elif len(password) > MAX_PASSWORD_LEN:
+        error = f'Password too long (max {MAX_PASSWORD_LEN} characters).'
     elif password != password2:
         error = 'Passwords do not match.'
 
@@ -262,39 +307,54 @@ def create_message_get(request: Request, reply_to: Optional[int] = None):
             ).fetchone()
             parent = dict(row) if row else None
     return templates.TemplateResponse('create_message.html', {
-        'request': request, 'user': user, 'parent': parent,
+        'request': request, 'user': user, 'parent': parent, 'error': None,
     })
 
 
 @app.post('/create_message', response_class=HTMLResponse)
 def create_message_post(
     request: Request,
-    body: str = Form(...),
+    body: str = Form(default=''),
     parent_id: Optional[int] = Form(None),
 ):
     user = current_user(request)
     if not user:
         return RedirectResponse('/login', status_code=302)
+
     body = body.strip()
+    error = None
     if not body:
-        parent = None
-        if parent_id:
-            with get_db() as con:
-                row = con.execute(
-                    'SELECT m.*, u.username FROM messages m JOIN users u ON m.user_id=u.id WHERE m.id=?',
-                    (parent_id,)
-                ).fetchone()
-                parent = dict(row) if row else None
+        error = 'Message cannot be empty.'
+    elif len(body) > MAX_BODY_LEN:
+        error = f'Message too long (max {MAX_BODY_LEN} characters).'
+
+    # Validate parent exists if provided
+    parent = None
+    if parent_id is not None:
+        with get_db() as con:
+            row = con.execute(
+                'SELECT m.*, u.username FROM messages m JOIN users u ON m.user_id=u.id WHERE m.id=?',
+                (parent_id,)
+            ).fetchone()
+            parent = dict(row) if row else None
+        if parent is None:
+            parent_id = None  # orphan reply protection
+
+    if error:
         return templates.TemplateResponse('create_message.html', {
             'request': request, 'user': user,
-            'error': 'Message cannot be empty.', 'parent': parent,
+            'error': error, 'parent': parent,
         }, status_code=400)
+
     with get_db() as con:
         con.execute(
             'INSERT INTO messages (user_id, body, created_at, parent_id) VALUES (?,?,?,?)',
             (user['id'], body, datetime.now().isoformat(), parent_id),
         )
         con.commit()
+
+    if parent_id:
+        return RedirectResponse(f'/message/{parent_id}', status_code=302)
     return RedirectResponse('/', status_code=302)
 
 
@@ -308,32 +368,40 @@ def edit_message_get(request: Request, message_id: int):
     if not row or row['user_id'] != user['id']:
         return RedirectResponse('/', status_code=302)
     return templates.TemplateResponse('edit_message.html', {
-        'request': request, 'user': user, 'message': dict(row),
+        'request': request, 'user': user, 'message': dict(row), 'error': None,
     })
 
 
 @app.post('/edit_message/{message_id}', response_class=HTMLResponse)
-def edit_message_post(request: Request, message_id: int, body: str = Form(...)):
+def edit_message_post(request: Request, message_id: int, body: str = Form(default='')):
     user = current_user(request)
     if not user:
         return RedirectResponse('/login', status_code=302)
     body = body.strip()
-    if not body:
-        with get_db() as con:
-            row = con.execute('SELECT * FROM messages WHERE id=?', (message_id,)).fetchone()
-        return templates.TemplateResponse('edit_message.html', {
-            'request': request, 'user': user, 'message': dict(row),
-            'error': 'Message cannot be empty.',
-        }, status_code=400)
+
     with get_db() as con:
-        row = con.execute('SELECT user_id FROM messages WHERE id=?', (message_id,)).fetchone()
+        row = con.execute('SELECT * FROM messages WHERE id=?', (message_id,)).fetchone()
         if not row or row['user_id'] != user['id']:
             return RedirectResponse('/', status_code=302)
+        if not body:
+            return templates.TemplateResponse('edit_message.html', {
+                'request': request, 'user': user, 'message': dict(row),
+                'error': 'Message cannot be empty.',
+            }, status_code=400)
+        if len(body) > MAX_BODY_LEN:
+            return templates.TemplateResponse('edit_message.html', {
+                'request': request, 'user': user, 'message': dict(row),
+                'error': f'Message too long (max {MAX_BODY_LEN} characters).',
+            }, status_code=400)
         con.execute(
             'UPDATE messages SET body=?, edited_at=? WHERE id=?',
             (body, datetime.now().isoformat(), message_id),
         )
         con.commit()
+
+    parent_id = row['parent_id']
+    if parent_id:
+        return RedirectResponse(f'/message/{parent_id}', status_code=302)
     return RedirectResponse('/', status_code=302)
 
 
@@ -343,10 +411,12 @@ def delete_message(request: Request, message_id: int):
     if not user:
         return RedirectResponse('/login', status_code=302)
     with get_db() as con:
-        row = con.execute('SELECT user_id FROM messages WHERE id=?', (message_id,)).fetchone()
+        row = con.execute('SELECT user_id, parent_id FROM messages WHERE id=?', (message_id,)).fetchone()
         if row and row['user_id'] == user['id']:
             con.execute('DELETE FROM messages WHERE id=?', (message_id,))
             con.commit()
+            if row['parent_id']:
+                return RedirectResponse(f'/message/{row["parent_id"]}', status_code=302)
     return RedirectResponse('/', status_code=302)
 
 
@@ -378,16 +448,18 @@ def profile(request: Request, username: str):
         'request': request, 'user': user,
         'profile_user': dict(profile_user),
         'messages': msgs, 'msg_count': msg_count,
+        'delete_error': None,
     })
 
 
 @app.post('/profile/{username}/edit', response_class=HTMLResponse)
-def profile_edit(request: Request, username: str, bio: str = Form('')):
+def profile_edit(request: Request, username: str, bio: str = Form(default='')):
     user = current_user(request)
     if not user or user['username'] != username:
         return RedirectResponse(f'/profile/{username}', status_code=302)
+    bio = bio.strip()[:MAX_BIO_LEN]
     with get_db() as con:
-        con.execute('UPDATE users SET bio=? WHERE username=?', (bio.strip(), username))
+        con.execute('UPDATE users SET bio=? WHERE username=?', (bio, username))
         con.commit()
     return RedirectResponse(f'/profile/{username}', status_code=302)
 
@@ -397,14 +469,24 @@ def profile_edit(request: Request, username: str, bio: str = Form('')):
 # ---------------------------------------------------------------------------
 
 @app.post('/delete_account')
-def delete_account(request: Request, password: str = Form(...)):
+def delete_account(request: Request, password: str = Form(default='')):
     user = current_user(request)
     if not user:
         return RedirectResponse('/login', status_code=302)
-    if user['password_hash'] != hash_password(password):
+    if not password or user['password_hash'] != hash_password(password[:MAX_PASSWORD_LEN]):
+        with get_db() as con:
+            msgs = con.execute('''
+                SELECT m.*, u.username, u.avatar_seed
+                FROM messages m JOIN users u ON m.user_id=u.id
+                WHERE m.user_id=? AND m.parent_id IS NULL
+                ORDER BY m.created_at DESC LIMIT 20
+            ''', (user['id'],)).fetchall()
+            msg_count = con.execute(
+                'SELECT COUNT(*) FROM messages WHERE user_id=?', (user['id'],)
+            ).fetchone()[0]
         return templates.TemplateResponse('profile.html', {
             'request': request, 'user': user,
-            'profile_user': user, 'messages': [], 'msg_count': 0,
+            'profile_user': user, 'messages': msgs, 'msg_count': msg_count,
             'delete_error': 'Incorrect password.',
         }, status_code=400)
     with get_db() as con:
@@ -432,18 +514,20 @@ def change_password_get(request: Request):
 @app.post('/change_password', response_class=HTMLResponse)
 def change_password_post(
     request: Request,
-    old_password: str = Form(...),
-    new_password: str = Form(...),
-    new_password2: str = Form(...),
+    old_password: str = Form(default=''),
+    new_password: str = Form(default=''),
+    new_password2: str = Form(default=''),
 ):
     user = current_user(request)
     if not user:
         return RedirectResponse('/login', status_code=302)
     error = None
-    if user['password_hash'] != hash_password(old_password):
+    if not old_password or user['password_hash'] != hash_password(old_password[:MAX_PASSWORD_LEN]):
         error = 'Old password is incorrect.'
     elif not new_password:
         error = 'New password cannot be empty.'
+    elif len(new_password) > MAX_PASSWORD_LEN:
+        error = f'Password too long (max {MAX_PASSWORD_LEN} characters).'
     elif new_password != new_password2:
         error = 'New passwords do not match.'
     if error:
@@ -468,18 +552,19 @@ def change_password_post(
 
 @app.get('/search', response_class=HTMLResponse)
 def search(request: Request, q: str = '', page: int = 1):
+    page = _safe_page(page)
     user = current_user(request)
     results = []
     total = 0
+    q = q[:200]  # cap query length
     if q:
         offset = (page - 1) * PAGE_SIZE
         with get_db() as con:
             try:
                 total = con.execute(
-                    '''SELECT COUNT(*) FROM messages_fts WHERE messages_fts MATCH ?''',
-                    (q,),
+                    'SELECT COUNT(*) FROM messages_fts WHERE messages_fts MATCH ?', (q,),
                 ).fetchone()[0]
-                rows = con.execute('''
+                results = con.execute('''
                     SELECT m.id, m.body, m.created_at, m.edited_at, m.user_id,
                            u.username, u.avatar_seed
                     FROM messages_fts f
@@ -489,9 +574,7 @@ def search(request: Request, q: str = '', page: int = 1):
                     ORDER BY m.created_at DESC
                     LIMIT ? OFFSET ?
                 ''', (q, PAGE_SIZE, offset)).fetchall()
-                results = rows
             except sqlite3.OperationalError:
-                # Fall back to LIKE if FTS query is invalid
                 like = f'%{q}%'
                 total = con.execute(
                     'SELECT COUNT(*) FROM messages WHERE body LIKE ?', (like,)
@@ -513,7 +596,7 @@ def search(request: Request, q: str = '', page: int = 1):
 
 
 # ---------------------------------------------------------------------------
-# Routes — Replies
+# Routes — Replies / Thread
 # ---------------------------------------------------------------------------
 
 @app.get('/message/{message_id}', response_class=HTMLResponse)
